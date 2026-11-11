@@ -1,5 +1,7 @@
 # Lispr
 
+[![CI](https://github.com/ethanez713/lispr/actions/workflows/ci.yml/badge.svg)](https://github.com/ethanez713/lispr/actions/workflows/ci.yml)
+
 On-device dictation: a button over Gboard's microphone that types into the focused field.
 
 While the keyboard is in English, the button covers that microphone, records on the phone, and inserts the text into whatever field is focused. The manifest removes `INTERNET` with `tools:node="remove"` (`android/app/src/main/AndroidManifest.xml`), so a dependency cannot add a network permission, and model files are copied on with adb. Any other keyboard language leaves the microphone uncovered, so Gboard's own voice typing still receives the tap.
