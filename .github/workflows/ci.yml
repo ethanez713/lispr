@@ -24,7 +24,6 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --require-hashes -r requirements.txt
-      # The Android JVM tests are not run here: the test task builds llama.cpp natively.
       - name: Test
         run: .venv/bin/python -m pytest -q -m "not slow"
 
