@@ -2,22 +2,46 @@
 
 [![CI](https://github.com/ethanez713/lispr/actions/workflows/ci.yml/badge.svg)](https://github.com/ethanez713/lispr/actions/workflows/ci.yml)
 
-On-device dictation: a button over Gboard's microphone that types into the focused field.
+**Dictation for Android that never leaves the phone.** A button sits beside Gboard's
+microphone. Tap it, talk, tap again, and clean text lands in whatever field you are
+typing in, with the fillers dropped and the self-corrections resolved.
 
-While the keyboard is in English, the button covers that microphone, records on the phone, and inserts the text into whatever field is focused. The manifest removes `INTERNET` with `tools:node="remove"` (`android/app/src/main/AndroidManifest.xml`), so a dependency cannot add a network permission, and model files are copied on with adb. Any other keyboard language leaves the microphone uncovered, so Gboard's own voice typing still receives the tap.
-
-The long version is `docs/design.md`.
-
-## Screenshots
+Speech recognition and the cleanup model both run on the device. The app has no
+`INTERNET` permission, so nothing you say can be sent anywhere.
 
 <table>
   <tr>
-    <td width="30%"><img src="docs/screenshots/phone-settings.png" alt="Phone app settings"></td>
-    <td width="70%" valign="top"><img src="docs/screenshots/host-pipeline.png" alt="Host pipeline run"><br><br>
-      <b>Host pipeline</b> (right). The same slicer, Parakeet recognizer and S1-mini cleaner run on a wav, here synthesized speech. Fillers are dropped and the spoken correction "Thursday. No wait, Friday" is resolved, in 647 ms to recognise and 1.1 s to clean on this machine.<br><br>
-      <b>Phone app</b> (left). Setup status, then where the button sits relative to Gboard's microphone, its size, opacity and colours. Recording, recognition and cleanup all run on the phone.</td>
+    <td width="50%"><img src="docs/screenshots/dictating.png" alt="Dictating into a note"></td>
+    <td width="50%"><img src="docs/screenshots/on-device.png" alt="A note dictated on the device"></td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Any text field.</b> The ring beside the microphone is the button, here recording into a note.</td>
+    <td valign="top"><b>On the phone's own hardware.</b> A ten-second take is recognised in under a second and cleaned in about one more on a Galaxy S25 Ultra.</td>
   </tr>
 </table>
+
+<p><img src="docs/screenshots/button-states.png" width="70%" alt="The button resting and recording"></p>
+
+**The button**, resting and recording. The text in both notes is what the phone's
+pipeline produced from a spoken sample ("Um, typing on a phone is slow…"), placed in the
+note for the capture.
+
+## What it does
+
+- **Types where you are.** An accessibility service inserts into the focused field of any
+  app. With the keyboard in another language the button steps aside, so Gboard's own
+  voice typing still works there.
+- **Cleans up speech.** "Thursday. No wait, Friday at three" becomes "Friday at three".
+  A small language model does the editing, and its output is treated as untrusted: a
+  cleaned chunk that invents a link, a name or a number is thrown away and the words as
+  heard are used.
+- **Stays local.** Parakeet for recognition, S1-mini for cleanup, both from pinned,
+  hash-checked weights copied on over adb. The app cannot download anything.
+- **The same pipeline on a desktop.** A Python library runs the identical stages on a
+  wav file or behind a Windows hotkey, and one set of test vectors keeps the Python and
+  Kotlin implementations in step.
+
+The long version is [`docs/design.md`](docs/design.md).
 
 ## Pipeline
 
@@ -31,6 +55,11 @@ flowchart TD
   hotkey[Windows hotkey] --> host[Host Python library]
   host --> mirror[Same slicer, Parakeet, and S1-mini]
 ```
+
+<img src="docs/screenshots/host-pipeline.png" width="80%" alt="Host pipeline run">
+
+The host library on a synthesized sample: the raw transcript, then the cleaned text, with
+both timings.
 
 A take is 16 kHz mono PCM, at most five minutes (`take_cap_s` in `config/pipeline.json`). The recognizer is Parakeet Unified EN 0.6B, int8, through sherpa-onnx. The cleaner is S1-mini Q4_K_M through llama.cpp; on the phone that call is JNI (`android/app/src/main/cpp/cleaner_jni.cpp`). A streaming FastConformer draws the preview bubble and is not what gets inserted.
 
